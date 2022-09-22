@@ -1,0 +1,26 @@
+[package]
+name = "hc-sr04"
+version = "0.1.0"
+edition = "2021"
+authors = ["Marco Radocchia <marco.radocchia@outlook.com"]
+rust-version = "1.63.0"
+description = "Raspberry Pi Rust driver for the HC-SR04 ultrasonic distance sensor."
+readme = "README.md"
+repository = "https://github.com/marcoradocchia/hc-sr04"
+license = "GPL-3.0-only"
+keywords = ["hc-sr04", "ultrasonic", "distance", "sensor", "raspberry-pi"]
+categories = ["hardware-support"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[example]]
+name="distance"
+path="examples/distance.rs"
+
+[dependencies]
+rppal = "0.13.1"
+
+[profile.release]
+strip = true
+lto = "fat"
+codegen-units = 1
