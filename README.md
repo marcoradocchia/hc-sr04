@@ -10,13 +10,15 @@
   ![GitHub license](https://img.shields.io/github/license/marcoradocchia/hc-sr04?color=%23e78a4e)
 </div>
 
-This crate provides a driver for the **HC-SR04**/**HC-SR04P** ultrasonic distance sensor on 
-*Raspberry Pi*, using [rppal](https://docs.rs/rppal/0.13.1/rppal/) to access Raspberry Pi's GPIO.
+This crate provides a driver for the **HC-SR04**/**HC-SR04P** ultrasonic
+distance sensor on *Raspberry Pi*, using
+[rppal](https://docs.rs/rppal/0.13.1/rppal/) to access Raspberry Pi's GPIO.
 
 ## Examples
 
 Usage examples can be found in the 
-[examples](https://github.com/marcoradocchia/hc-sr04/tree/master/examples) folder.
+[examples](https://github.com/marcoradocchia/hc-sr04/tree/master/examples)
+folder.
 
 ## Measure distance
 ```rust
@@ -38,8 +40,9 @@ match ultrasonic.measure_distance(Unit::Meters).unwrap() {
 
 ## Calibrate measurement
 
-Distance measurement can be calibrated at runtime using the [`HcSr04::calibrate`] method that 
-this library exposes, passing the current ambient temperature as `f32`.
+Distance measurement can be calibrated at runtime using the `HcSr04::calibrate`
+method that this library exposes, passing the current ambient temperature as
+`f32`.
 
 ```rust
 use hc_sr04::{HcSr04, Unit};
