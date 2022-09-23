@@ -1,3 +1,69 @@
+// hc-sr04: Raspberry Pi Rust driver for the HC-SR04 ultrasonic distance sensor.
+// Copyright (C) 2022 Marco Radocchia
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, either version 3 of the License, or (at your option) any later
+// version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+// FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+// details.
+//
+// You should have received a copy of the GNU General Public License along with
+// this program. If not, see https://www.gnu.org/licenses/.
+//
+//! **HC-SR04** ultrasonic distance sensor driver.
+//!
+//! This crate provides a driver for the **HC-SR04**/**HC-SR04P** ultrasonic distance sensor on
+//! *Raspberry Pi*, using [rppal](https://docs.rs/rppal/0.13.1/rppal/) to access Raspberry Pi's
+//! GPIO.
+//!
+//! ## Examples
+//!
+//! Usage examples can be found in the
+//! [examples](https://github.com/marcoradocchia/hc-sr04/tree/master/examples) folder.
+//!
+//! ## Measure distance
+//! ```rust
+//! use hc_sr04::{HcSr04, Unit};
+//!
+//! // Initialize driver.
+//! let mut ultrasonic = HcSr04::new(
+//!     24,          // TRIGGER -> Gpio pin 24
+//!     23,          // ECHO -> Gpio pin 23
+//!     Some(23_f32) // Ambient temperature (if `None` defaults to 20.0C)
+//! ).unwrap();
+//!
+//! // Perform distance measurement, specifying measuring unit of return value.
+//! match ultrasonic.measure_distance(Unit::Meters).unwrap() {
+//!     Some(dist) => println!("Distance: {.2}m", dist),
+//!     None => println!("Object out of range"),
+//! }
+//! ```
+//!
+//! ## Calibrate measurement
+//!
+//! Distance measurement can be calibrated at runtime using the [`HcSr04::calibrate`] method that
+//! this library exposes, passing the current ambient temperature as `f32`.
+//!
+//! ```rust
+//! use hc_sr04::{HcSr04, Unit};
+//!
+//! // Initialize driver.
+//! let mut ultrasonic = HcSr04::new(24, 23, None).unwrap();
+//!
+//! // Calibrate measurement with ambient temperature.
+//! ultrasonic.calibrate(23_f32);
+//!
+//! // Perform distance measurement.
+//! match ultrasonic.measure_distance(Unit::Centimeters).unwrap() {
+//!     Some(dist) => println!("Distance: {.1}cm", dist),
+//!     None => println!("Object out of range"),
+//! }
+//! ```
+
 pub mod error;
 
 use error::Error;
@@ -9,7 +75,7 @@ use std::{
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Measuring unit (defaults to `Unit::Meters`).
+/// Measuring unit (defaults to [`Unit::Meters`]).
 pub enum Unit {
     Millimeters,
     Centimeters,
@@ -38,7 +104,7 @@ pub struct HcSr04 {
 impl HcSr04 {
     /// Perform `sound_speed` and `timeout` calculations required to calibrate the sensor,
     /// based on **ambient temperature**.
-    fn calibrate_sensor(temp: f32) -> (f32, Duration) {
+    fn calibration_calc(temp: f32) -> (f32, Duration) {
         /// Speed of sound at 0C in m/s.
         const SOUND_SPEED_0C: f32 = 331.3;
         /// Increase speed of sound over temperature factor m/[sC].
@@ -73,7 +139,7 @@ impl HcSr04 {
         let mut echo = gpio.get(echo)?.into_input_pulldown();
         echo.set_interrupt(Trigger::Both)?;
 
-        let (sound_speed, timeout) = Self::calibrate_sensor(temp.unwrap_or(20.));
+        let (sound_speed, timeout) = Self::calibration_calc(temp.unwrap_or(20.));
 
         Ok(Self {
             trig: gpio.get(trig)?.into_output_low(),
@@ -83,26 +149,29 @@ impl HcSr04 {
         })
     }
 
-    /// Calibrate the sensor with the given **ambient temperature**.
+    /// Calibrate the sensor with the given **ambient temperature** (`temp`) expressed as *Celsius
+    /// degrees*.
     pub fn calibrate(&mut self, temp: f32) {
-        (self.sound_speed, self.timeout) = Self::calibrate_sensor(temp);
+        (self.sound_speed, self.timeout) = Self::calibration_calc(temp);
     }
 
     /// Perform **distance measurement**.
     ///
-    /// Returns `Ok` variant if measurement succedes, where contained value represents distance in
-    /// the `unit` *unit of measure* if `Some`, .
+    /// Returns `Ok` variant if measurement succedes. Inner `Option` value is `None` if no object
+    /// is present within maximum measuring range (*4m*); otherwhise, on `Some` variant instead,
+    /// contained value represents distance expressed as the specified `unit`
+    /// (**unit of measure**).
     pub fn measure_distance(&mut self, unit: Unit) -> Result<Option<f32>> {
         self.trig.set_high();
         thread::sleep(Duration::from_micros(10));
         self.trig.set_low();
 
         // Wait for the `RisingEdge` by ensuring the resulting level is `Level::High`.
-        // BUG: this blocks when Object out of range.
         while self.echo.poll_interrupt(false, None)? != Some(Level::High) {}
         let instant = Instant::now();
+        // Wait for the `FallingEdge` by ensuring the resulting level is `Level::Low`.
         if self.echo.poll_interrupt(false, Some(self.timeout))? != Some(Level::Low) {
-            // Timeout reached: object out of range.
+            // Timeout reached: object out of range (distance > maximum range).
             return Ok(None);
         }
 
