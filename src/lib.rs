@@ -120,7 +120,7 @@ impl HcSr04 {
         // max range distance. In other words, if the timeout is reached, the measurement was not
         // successfull or the object is located too far away from the sensor in order to be
         // detected.
-        let timeout = Duration::from_secs_f32(MAX_RANGE / sound_speed);
+        let timeout = Duration::from_secs_f32(MAX_RANGE / sound_speed * 2.);
 
         (sound_speed, timeout)
     }
