@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.2] - 2024-05-02
+
+- **Dep**: bump `rppal` dependency version to `0.17.1`.
+
 ## [0.1.1] - 2023-03-25
 
 ### Fixed
