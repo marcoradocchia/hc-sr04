@@ -25,12 +25,14 @@ use std::{
 pub enum Error {
     /// Occurs on Raspberry Pi GPIO error.
     Gpio(gpio::Error),
+    Timeout()
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             Self::Gpio(error) => write!(f, "GPIO error: {}", error),
+            Self::Timeout() => write!(f, "Timed out reading GPIO"),
         }
     }
 }
